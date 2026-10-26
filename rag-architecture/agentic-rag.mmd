@@ -1,0 +1,102 @@
+---
+title: "Agentic RAG Architecture (Bottom-Up)"
+config:
+  flowchart:
+    curve: basis
+  theme: base
+  themeVariables:
+    primaryColor: '#E2F0CB'
+    primaryTextColor: '#1F2937'
+    primaryBorderColor: '#8E9AAF'
+    lineColor: '#4A5568'
+    edgeLabelBackground: '#FFFFFF'
+    fontFamily: 'Inter, system-ui, sans-serif'
+    mainBkg: '#FFFFFF'
+    secondBkg: '#F8FAFC'
+    tertiaryColor: '#EDF2F7'
+    clusterBkg: '#FAFAFA'
+    clusterBorder: '#CBD5E1'
+    background: '#FFFFFF'
+    secondaryColor: '#E2E8F0'
+    tertiaryTextColor: '#1F2937'
+    secondaryTextColor: '#1F2937'
+    textColor: '#1F2937'
+    nodeTextColor: '#1F2937'
+  themeCSS: '.edgeLabel, .edgeLabels, .edgeLabel *, .edgeLabels *, .edgeLabel .label, .edgeLabels .label, .edgeLabel p, .edgeLabels p, .edgeLabel div, .edgeLabels div, .edgeLabel foreignObject, .edgeLabels foreignObject, .edgeLabel rect, .edgeLabels rect, .edgeLabel span, .edgeLabels span, .label rect, tspan { background-color: #FFFFFF !important; fill: #FFFFFF !important; stroke: none !important; } .edgeLabel .label text, .edgeLabel text, .edgeLabels text, .edgeLabel p, .edgeLabels p, .edgeLabel span, .edgeLabels span { color: #4A5568 !important; fill: #4A5568 !important; }'
+---
+
+flowchart BT
+  subgraph mainContainer[" "]
+    direction BT
+
+    endUser@{ shape: sl-rect, label: "👤 User" }
+    llmApp@{ shape: rect, label: "💻 LLM App" }
+    agentOrchestrator@{ shape: rect, label: "🤖 Agent Orchestrator" }
+
+    subgraph toolsContainer ["Tools & Retrieval Sources"]
+      direction LR
+      vectorDb@{ shape: lin-cyl, label: "🗄️ Vector DB" }
+      docsStorage@{ shape: lin-doc, label: "📄 Docs" }
+      webSearch@{ shape: rect, label: "🌐 Web search" }
+      crmData@{ shape: rect, label: "📇 CRM" }
+      apiServices@{ shape: cloud, label: "☁️ APIs" }
+      mcpServers@{ shape: rect, label: "🖥️ MCP servers" }
+    end
+
+    retrievedEvidence@{ shape: lin-doc, label: "🛡️ Retrieved evidence" }
+    evaluatorAgent@{ shape: rect, label: "🔍 Evaluator Agent" }
+    contextBuilder@{ shape: rect, label: "📄 Context Builder" }
+    llm@{ shape: hex, label: "🧠 LLM" }
+
+    %% Flow Connections (Bottom-Up Directional Flow)
+    endUser edgeQuery@-->|1 query| llmApp
+    edgeQuery@{ curve: linear, animate: true, animation: slow }
+
+    llmApp edgeTask@-->|2 task| agentOrchestrator
+    edgeTask@{ curve: linear, animate: true, animation: fast }
+
+    agentOrchestrator edgeSelectTools@-->|3 select tools| toolsContainer
+    edgeSelectTools@{ curve: linear, animate: true, animation: fast }
+
+    toolsContainer edgeFetchEvidence@-->|4 fetch evidence| retrievedEvidence
+    edgeFetchEvidence@{ curve: linear, animate: true, animation: fast }
+
+    retrievedEvidence edgeCheckTask@-->|5 check vs task| evaluatorAgent
+    edgeCheckTask@{ curve: linear, animate: true, animation: fast }
+
+    evaluatorAgent edgeLoopback@-.->|no: rewrite query<br/>or switch source<br/>max 5 tries| agentOrchestrator
+    edgeLoopback@{ curve: basis, animate: true, animation: fast }
+
+    evaluatorAgent edgeYesEvidence@-->|6 yes evidence| contextBuilder
+    edgeYesEvidence@{ curve: linear, animate: true, animation: fast }
+
+    contextBuilder edgeAugmentedPrompt@-->|7 augmented prompt| llm
+    edgeAugmentedPrompt@{ curve: linear, animate: true, animation: fast }
+
+    llm edgeAnswer@-->|8 answer| llmApp
+    edgeAnswer@{ curve: linear, animate: true, animation: fast }
+
+    llmApp edgeResponse@-->|9 response| endUser
+    edgeResponse@{ curve: linear, animate: true, animation: slow }
+  end
+
+%% Pastel Light Theme Styling & Classes
+classDef zoneClass fill:#F9F9F9,stroke:#9E9E9E,stroke-width:2px,stroke-dasharray:6,rx:40,ry:40,color:#1F2937;
+classDef containerClass fill:#E8F5E9,stroke:#81C784,stroke-width:2px,rx:25,ry:25,color:#1F2937;
+classDef coreMicroserviceClass fill:#E1BEE7,stroke:#9C27B0,stroke-width:2px,color:#1F2937;
+classDef supportingMicroserviceClass fill:#C8E6C9,stroke:#4CAF50,stroke-width:2px,color:#1F2937;
+classDef microfrontendClass fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#1F2937;
+classDef systemClass fill:#C8E6C9,stroke:#4CAF50,stroke-width:2px,color:#1F2937;
+classDef systemUserClass fill:#E0F7FA,stroke:#00ACC1,stroke-width:2px,color:#1F2937;
+
+class toolsContainer containerClass;
+class endUser systemUserClass;
+class llmApp microfrontendClass;
+class agentOrchestrator,evaluatorAgent,contextBuilder supportingMicroserviceClass;
+class llm coreMicroserviceClass;
+class vectorDb,docsStorage,webSearch,crmData,apiServices,mcpServers,retrievedEvidence systemClass;
+
+%% Specific Overrides & Red Loopback Highlight
+style mainContainer fill:#FFFFFF,stroke:#CBD5E1,stroke-width:2px,rx:20px,ry:20px;
+style evaluatorAgent fill:#E8F5E9,stroke:#81C784,stroke-width:2px,color:#1F2937;
+linkStyle 2 stroke:#E57373,stroke-width:2px,stroke-dasharray: 5 5;
