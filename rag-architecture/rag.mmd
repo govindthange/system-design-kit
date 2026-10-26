@@ -1,0 +1,88 @@
+---
+title: "RAG Workflow Architecture (Bottom-Up)"
+config:
+  flowchart:
+    curve: basis
+  theme: base
+  themeVariables:
+    primaryColor: '#E2F0CB'
+    primaryTextColor: '#1F2937'
+    primaryBorderColor: '#8E9AAF'
+    lineColor: '#4A5568'
+    edgeLabelBackground: '#FFFFFF'
+    fontFamily: 'Inter, system-ui, sans-serif'
+    mainBkg: '#FFFFFF'
+    secondBkg: '#F8FAFC'
+    tertiaryColor: '#EDF2F7'
+    clusterBkg: '#FAFAFA'
+    clusterBorder: '#CBD5E1'
+    background: '#FFFFFF'
+    secondaryColor: '#E2E8F0'
+    tertiaryTextColor: '#1F2937'
+    secondaryTextColor: '#1F2937'
+    textColor: '#1F2937'
+    nodeTextColor: '#1F2937'
+  themeCSS: '.edgeLabel, .edgeLabels, .edgeLabel *, .edgeLabels *, .edgeLabel .label, .edgeLabels .label, .edgeLabel p, .edgeLabels p, .edgeLabel div, .edgeLabels div, .edgeLabel foreignObject, .edgeLabels foreignObject, .edgeLabel rect, .edgeLabels rect, .edgeLabel span, .edgeLabels span, .label rect, tspan { background-color: #FFFFFF !important; fill: #FFFFFF !important; stroke: none !important; } .edgeLabel .label text, .edgeLabel text, .edgeLabels text, .edgeLabel p, .edgeLabels p, .edgeLabel span, .edgeLabels span { color: #4A5568 !important; fill: #4A5568 !important; }'
+---
+
+flowchart BT
+  subgraph mainContainer[" "]
+    direction BT
+
+    endUser@{ shape: sl-rect, label: "👤 User" }
+    llmApp@{ shape: rect, label: "💻 LLM App" }
+    retriever@{ shape: lin-cyl, label: "🗄️ Retriever" }
+    promptBuilder@{ shape: rect, label: "📄 Prompt Builder" }
+    llm@{ shape: hex, label: "🧠 LLM" }
+
+    subgraph vectorIndexContainer ["Vector / Hybrid Index"]
+      direction LR
+      pdfDoc@{ shape: lin-doc, label: "📄 PDF" }
+      docsDoc@{ shape: lin-doc, label: "📄 Docs" }
+      codeDoc@{ shape: lin-doc, label: "💻 Code" }
+      searchIndex@{ shape: rect, label: "🔍 Search Index" }
+    end
+
+    %% Flow Connections (Reversed direction flow: Bottom-Up order)
+
+    endUser edgeQuery@-->|1. query| llmApp
+    edgeQuery@{ curve: linear, animate: true, animation: slow }
+
+    llmApp edgeAppQuery@-->|2. query| retriever
+    edgeAppQuery@{ curve: linear, animate: true, animation: fast }
+
+    retriever edgeEmbed@-->|3. embed + search| vectorIndexContainer
+    edgeEmbed@{ curve: linear, animate: true, animation: fast }
+
+    vectorIndexContainer edgeChunks@-->|4. top-K chunks| retriever
+    edgeChunks@{ curve: linear, animate: true, animation: fast }
+
+    retriever edgePromptData@-->|5. query + chunks| promptBuilder
+    edgePromptData@{ curve: linear, animate: true, animation: fast }
+
+    promptBuilder edgeAugmented@-->|6. augmented prompt| llm
+    edgeAugmented@{ curve: linear, animate: true, animation: fast }
+
+    llm edgeAnswer@-->|7. answer| llmApp
+    edgeAnswer@{ curve: basis, animate: true, animation: fast }
+
+    llmApp edgeResponse@-->|8. response| endUser
+    edgeResponse@{ curve: linear, animate: true, animation: slow }
+  end
+
+%% Pastel Light Theme Styling Classes
+classDef zoneClass fill:#F9F9F9,stroke:#9E9E9E,stroke-width:2px,stroke-dasharray:6,rx:40,ry:40,color:#1F2937;
+classDef containerClass fill:#E8F5E9,stroke:#81C784,stroke-width:2px,rx:25,ry:25,color:#1F2937;
+classDef coreMicroserviceClass fill:#E1BEE7,stroke:#9C27B0,stroke-width:2px,color:#1F2937;
+classDef systemClass fill:#C8E6C9,stroke:#4CAF50,stroke-width:2px,color:#1F2937;
+classDef systemUserClass fill:#E0F7FA,stroke:#00ACC1,stroke-width:2px,color:#1F2937;
+classDef microfrontendClass fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#1F2937;
+
+class vectorIndexContainer containerClass;
+class endUser systemUserClass;
+class llmApp microfrontendClass;
+class retriever,promptBuilder systemClass;
+class llm coreMicroserviceClass;
+
+%% Specific Overrides
+style mainContainer fill:#FFFFFF,stroke:#CBD5E1,stroke-width:2px,rx:20px,ry:20px;
