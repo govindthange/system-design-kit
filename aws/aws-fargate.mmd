@@ -1,0 +1,198 @@
+---
+title: "AWS Cloud Reference Architecture"
+config:
+  flowchart:
+    curve: basis
+  theme: base
+  themeVariables:
+    primaryColor: '#E2F0CB'
+    primaryTextColor: '#1F2937'
+    primaryBorderColor: '#8E9AAF'
+    lineColor: '#4A5568'
+    edgeLabelBackground: '#FFFFFF'
+    fontFamily: 'Inter, system-ui, sans-serif'
+    mainBkg: '#FFFFFF'
+    secondBkg: '#F8FAFC'
+    tertiaryColor: '#EDF2F7'
+    clusterBkg: '#FAFAFA'
+    clusterBorder: '#CBD5E1'
+    background: '#FFFFFF'
+    secondaryColor: '#E2E8F0'
+    tertiaryTextColor: '#1F2937'
+    secondaryTextColor: '#1F2937'
+    textColor: '#1F2937'
+    nodeTextColor: '#1F2937'
+  themeCSS: '.edgeLabel, .edgeLabels, .edgeLabel *, .edgeLabels *, .edgeLabel .label, .edgeLabels .label, .edgeLabel p, .edgeLabels p, .edgeLabel div, .edgeLabels div, .edgeLabel foreignObject, .edgeLabels foreignObject, .edgeLabel rect, .edgeLabels rect, .edgeLabel span, .edgeLabels span, .label rect, tspan { background-color: #FFFFFF !important; fill: #FFFFFF !important; stroke: none !important; } .edgeLabel .label text, .edgeLabel text, .edgeLabels text, .edgeLabel p, .edgeLabels p, .edgeLabel span, .edgeLabels span { color: #4A5568 !important; fill: #4A5568 !important; }'
+---
+
+flowchart TD
+  subgraph mainContainer["AWS Region"]
+    direction TD
+
+    %% External Tier
+    endUser@{ shape: sl-rect, label: "👤 External Users" }
+    amazonRoute53@{ shape: rect, label: "🪧 Amazon Route 53" }
+    amazonCloudFront@{ shape: rect, label: "⚡ Amazon CloudFront" }
+    amazonS3Static@{ shape: lin-doc, label: "📄 Amazon S3 (Static Web)" }
+    amazonCognito@{ shape: bow-rect, label: "🪪 Amazon Cognito" }
+    amazonApiGateway@{ shape: rect, label: "🌐 Amazon API Gateway" }
+    internetGateway@{ shape: cloud, label: "🌐 Internet Gateway" }
+    fileStorageGlacier@{ shape: lin-doc, label: "📄 Amazon S3 Glacier" }
+    amazonCloudWatch@{ shape: rect, label: "📈 Amazon CloudWatch" }
+
+    subgraph vpcContainer ["VPC"]
+      direction TD
+
+      networkLoadBalancer@{ shape: rect, label: "🔀 Network Load Balancer" }
+
+      subgraph availabilityZone1 ["Availability Zone 1"]
+        direction TD
+        subgraph publicSubnet1 ["Public Subnet"]
+          natGateway1@{ shape: rect, label: "🔄 NAT Gateway" }
+        end
+        subgraph privateSubnet1 ["Private Subnet"]
+          direction TD
+          ecsTasks1@{ shape: rect, label: "🐳 ECS Tasks (API / App Services)" }
+          fargate1@{ shape: rect, label: "⚡ FARGATE" }
+          redisPrimary@{ shape: rect, label: "📦 Amazon ElastiCache Redis Primary" }
+          auroraMaster@{ shape: lin-cyl, label: "🗄️ Amazon Aurora Master" }
+        end
+      end
+
+      subgraph availabilityZone2 ["Availability Zone 2"]
+        direction TD
+        subgraph publicSubnet2 ["Public Subnet"]
+          natGateway2@{ shape: rect, label: "🔄 NAT Gateway" }
+        end
+        subgraph privateSubnet2 ["Private Subnet"]
+          direction TD
+          ecsTasks2@{ shape: rect, label: "🐳 ECS Tasks (API / App Services)" }
+          redisSecondary@{ shape: rect, label: "📦 Amazon ElastiCache Secondary" }
+          auroraReplica@{ shape: lin-cyl, label: "🗄️ Amazon Aurora Read Replica" }
+        end
+      end
+    end
+
+    subgraph clickStreamContainer ["Click Stream Analysis"]
+      direction LR
+      apiGatewayClick@{ shape: rect, label: "🌐 Amazon API Gateway" }
+      kinesisDataFirehose@{ shape: h-cyl, label: "📯 Amazon Kinesis Data Firehose" }
+      s3ClickStore@{ shape: lin-doc, label: "📄 Amazon S3 (Processed Data)" }
+      awsLambda@{ shape: hex, label: "λ AWS Lambda" }
+    end
+
+    subgraph cicdContainer ["CI/CD Pipeline"]
+      direction LR
+      awsCodeCommit@{ shape: rect, label: "📦 AWS CodeCommit" }
+      awsCodeBuild@{ shape: rect, label: "⚙️ AWS CodeBuild" }
+    end
+
+    amazonEcr@{ shape: rect, label: "🐳 Amazon ECR" }
+    awsCodePipeline@{ shape: rect, label: "🚀 AWS CodePipeline" }
+    devOpsTeam@{ shape: sl-rect, label: "👤 Development/Operations Team" }
+
+    %% Edges & Connections
+    endUser edgeUsers@--> amazonRoute53
+    edgeUsers@{ curve: linear, animate: true, animation: slow }
+
+    amazonRoute53 edgeRouteToCloudFront@==> amazonCloudFront
+    edgeRouteToCloudFront@{ curve: linear, animate: true, animation: slow }
+
+    amazonCloudFront edgeCfToS3@-.->|Static Web Front End HTML/CSS/JS| amazonS3Static
+    edgeCfToS3@{ curve: basis, animate: true, animation: fast }
+
+    amazonCloudFront edgeCfToApiGw@==> amazonApiGateway
+    edgeCfToApiGw@{ curve: linear, animate: true, animation: slow }
+
+    amazonApiGateway edgeApiGwToCognito@-.- amazonCognito
+    edgeApiGwToCognito@{ curve: linear }
+
+    amazonApiGateway edgeApiGwToIgw@==> internetGateway
+    edgeApiGwToIgw@{ curve: linear, animate: true, animation: slow }
+
+    internetGateway edgeIgwToNlb@==> networkLoadBalancer
+    edgeIgwToNlb@{ curve: linear, animate: true, animation: slow }
+
+    networkLoadBalancer edgeNlbToSub1@--> availabilityZone1
+    edgeNlbToSub1@{ curve: linear, animate: true, animation: fast }
+
+    networkLoadBalancer edgeNlbToSub2@--> availabilityZone2
+    edgeNlbToSub2@{ curve: linear, animate: true, animation: fast }
+
+    availabilityZone1 edgeAz1Nat@-.-> internetGateway
+    edgeAz1Nat@{ curve: basis }
+
+    availabilityZone2 edgeAz2Nat@-.-> internetGateway
+    edgeAz2Nat@{ curve: basis }
+
+    ecsTasks1 edgeEcsToRedis@--> redisPrimary
+    edgeEcsToRedis@{ curve: linear, animate: true, animation: fast }
+
+    ecsTasks1 edgeEcsToAurora@--> auroraMaster
+    edgeEcsToAurora@{ curve: linear, animate: true, animation: fast }
+
+    redisPrimary edgeRedisSync@--> redisSecondary
+    edgeRedisSync@{ curve: linear, animate: true, animation: fast }
+
+    auroraMaster edgeAuroraReplication@--> auroraReplica
+    edgeAuroraReplication@{ curve: linear, animate: true, animation: fast }
+
+    fargate1 edgeFargateGlacier@--> fileStorageGlacier
+    edgeFargateGlacier@{ curve: linear, animate: true, animation: fast }
+
+    ecsTasks1 edgeCloudWatchLog1@--> amazonCloudWatch
+    edgeCloudWatchLog1@{ curve: basis }
+
+    amazonCloudFront edgeUserClicks@-->|User Clicks API| apiGatewayClick
+    edgeUserClicks@{ curve: linear, animate: true, animation: slow }
+
+    apiGatewayClick edgeRawData@-->|Raw Data| kinesisDataFirehose
+    edgeRawData@{ curve: linear, animate: true, animation: fast }
+
+    kinesisDataFirehose edgeSaveProcessed@-->|Save Processed Data| s3ClickStore
+    edgeSaveProcessed@{ curve: linear, animate: true, animation: fast }
+
+    kinesisDataFirehose edgeClickProcessing@--> awsLambda
+    edgeClickProcessing@{ curve: linear, animate: true, animation: fast }
+
+    devOpsTeam edgeCodeCommit@--> awsCodeCommit
+    edgeCodeCommit@{ curve: linear, animate: true, animation: fast }
+
+    awsCodeCommit edgeCodeBuild@--> awsCodeBuild
+    edgeCodeBuild@{ curve: linear, animate: true, animation: fast }
+
+    awsCodeBuild edgeEcrPush@--> amazonEcr
+    edgeEcrPush@{ curve: linear, animate: true, animation: fast }
+
+    amazonEcr edgePipelineDeploy@--> awsCodePipeline
+    edgePipelineDeploy@{ curve: linear, animate: true, animation: fast }
+
+    awsCodePipeline edgeDeployToEcs@--> ecsTasks1
+    edgeDeployToEcs@{ curve: linear, animate: true, animation: fast }
+  end
+
+%% Pastel Light Theme Styling & Classes
+classDef zoneClass fill:#F9F9F9,stroke:#9E9E9E,stroke-width:2px,stroke-dasharray:6,rx:40,ry:40,color:#1F2937;
+classDef containerClass fill:#E8F5E9,stroke:#81C784,stroke-width:2px,rx:25,ry:25,color:#1F2937;
+classDef coreMicroserviceClass fill:#E1BEE7,stroke:#9C27B0,stroke-width:2px,color:#1F2937;
+classDef supportingMicroserviceClass fill:#C8E6C9,stroke:#4CAF50,stroke-width:2px,color:#1F2937;
+classDef microfrontendClass fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#1F2937;
+classDef microfrontedEdgeClass stroke:#FBC02D,stroke-width:3px;
+classDef systemClass fill:#C8E6C9,stroke:#4CAF50,stroke-width:2px,color:#1F2937;
+classDef systemUserClass fill:#E0F7FA,stroke:#00ACC1,stroke-width:2px,color:#1F2937;
+classDef redBorderNode fill:#FFD1DC,stroke:#E57373,stroke-width:2px,rx:50,ry:50,color:#1F2937;
+classDef blueBorderNode fill:#BDE0FE,stroke:#4A90E2,stroke-width:2px,color:#1F2937;
+classDef nodeClass fill:#FFFFFF,stroke:#CBD5E1,stroke-width:1px,color:#1F2937;
+classDef k8sServiceClass fill:#BDE0FE,stroke:#4A90E2,stroke-width:2px,color:#1F2937;
+classDef podClass fill:#F3E5F5,stroke:#BA68C8,rx:15,ry:15,color:#1F2937;
+
+class vpcContainer,availabilityZone1,availabilityZone2 containerClass;
+class publicSubnet1,publicSubnet2,clickStreamContainer,cicdContainer zoneClass;
+class ecsTasks1,ecsTasks2,fargate1 coreMicroserviceClass;
+class awsLambda supportingMicroserviceClass;
+class amazonS3Static,s3ClickStore,fileStorageGlacier,auroraMaster,auroraReplica,redisPrimary,redisSecondary systemClass;
+class endUser,devOpsTeam systemUserClass;
+
+style mainContainer fill:#FFFFFF,stroke:#CBD5E1,stroke-width:2px,rx:20px,ry:20px;
+style internetGateway fill:#FFD1DC,stroke:#E57373,stroke-width:2px,color:#1F2937;
+style networkLoadBalancer fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#1F2937;
